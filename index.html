@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stack Scanner — Framework Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D1017;
+    --panel:#151A24;
+    --panel-hover:#1B2130;
+    --line: rgba(237,238,242,0.09);
+    --text:#EDEEF2;
+    --muted:#8B93A7;
+    --amber:#E8A33D;
+    --teal:#4FD1C5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(79,209,197,0.07), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(232,163,61,0.06), transparent 55%),
+      var(--ink);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---------- Header ---------- */
+  header{
+    padding:64px 6vw 40px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin:0 0 18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:22px;height:1px;background:var(--teal);display:inline-block;
+  }
+  h1{
+    font-size:clamp(32px,4.4vw,52px);
+    line-height:1.05;
+    margin:0 0 18px;
+    font-weight:800;
+    letter-spacing:-0.02em;
+    max-width:16ch;
+  }
+  h1 span{color:var(--amber);}
+  header p.lede{
+    max-width:640px;
+    color:var(--muted);
+    font-size:16px;
+    margin:0;
+  }
+
+  /* ---------- Controls ---------- */
+  .controls{
+    padding:22px 6vw;
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    background:rgba(13,16,23,0.94);
+    backdrop-filter:blur(10px);
+    z-index:20;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .controls-row{
+    display:flex;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .control-group{display:flex;align-items:center;gap:10px;}
+  .control-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    flex-shrink:0;
+  }
+  .search-wrap{
+    position:relative;
+    flex:1 1 220px;
+    max-width:280px;
+  }
+  .search-wrap svg{
+    position:absolute; left:11px; top:50%; transform:translateY(-50%);
+    width:14px;height:14px; color:var(--muted); pointer-events:none;
+  }
+  #search{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    font-size:13.5px;
+    padding:9px 12px 9px 32px;
+    border-radius:8px;
+    outline:none;
+    transition:border-color .15s ease;
+  }
+  #search::placeholder{color:var(--muted);}
+  #search:focus{border-color:var(--teal);}
+
+  .seg{
+    display:flex;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:3px;
+    gap:2px;
+  }
+  .seg button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:7px 13px;
+    border-radius:6px;
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+    transition:all .15s ease;
+    white-space:nowrap;
+  }
+  .seg button:hover{color:var(--text);}
+  .seg button.active{background:var(--teal); color:#08211E; font-weight:600;}
+
+  .dropdown{position:relative;}
+  .dropdown-btn{
+    display:flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:8px 13px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--text);
+    cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  .dropdown-btn:hover{border-color:rgba(237,238,242,0.3);}
+  .dropdown-btn.has-selection{border-color:var(--amber); color:var(--amber);}
+  .dropdown-btn .count{
+    background:var(--amber); color:#2E1D06;
+    font-size:10px; font-weight:700;
+    border-radius:999px; padding:1px 6px;
+  }
+  .dropdown-btn .caret{transition:transform .15s ease; width:10px;height:10px;}
+  .dropdown-btn.open .caret{transform:rotate(180deg);}
+  .dropdown-panel{
+    position:absolute; top:calc(100% + 8px); left:0;
+    background:var(--panel-hover);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px;
+    min-width:220px;
+    display:none;
+    flex-direction:column;
+    gap:2px;
+    box-shadow:0 12px 28px rgba(0,0,0,0.35);
+  }
+  .dropdown-panel.open{display:flex;}
+  .dropdown-item{
+    display:flex; align-items:center; gap:9px;
+    font-size:13px;
+    padding:7px 8px;
+    border-radius:6px;
+    cursor:pointer;
+    color:var(--text);
+  }
+  .dropdown-item:hover{background:rgba(237,238,242,0.06);}
+  .dropdown-item input{accent-color:var(--teal); width:14px;height:14px;}
+  .dropdown-foot{
+    border-top:1px solid var(--line);
+    margin-top:6px; padding-top:8px;
+    display:flex; justify-content:flex-end;
+  }
+  .dropdown-foot button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; color:var(--muted);
+    background:none; border:none; cursor:pointer;
+  }
+  .dropdown-foot button:hover{color:var(--text);}
+
+  .active-filters{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    min-height:26px;
+  }
+  .pill{
+    display:flex; align-items:center; gap:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    background:color-mix(in srgb, var(--amber) 14%, transparent);
+    color:var(--amber);
+    border:1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+    padding:4px 6px 4px 10px;
+    border-radius:999px;
+  }
+  .pill button{
+    background:none;border:none;color:inherit;cursor:pointer;
+    display:flex;align-items:center;padding:2px;
+  }
+  .clear-all{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--muted);
+    background:none;border:none;cursor:pointer;
+    text-decoration:underline;
+    text-underline-offset:2px;
+  }
+  .clear-all:hover{color:var(--text);}
+
+  /* ---------- Grid ---------- */
+  main{padding:44px 6vw 100px;}
+  #count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 24px;
+    letter-spacing:0.05em;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));
+    gap:18px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:3px solid var(--brand, var(--teal));
+    border-radius:10px;
+    padding:24px;
+    transition:background .15s ease, transform .15s ease;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .card:hover{background:var(--panel-hover); transform:translateY(-2px);}
+  .card-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .mark{
+    width:44px;height:44px;
+    border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:15px;
+    flex-shrink:0;
+    background:color-mix(in srgb, var(--brand) 16%, transparent);
+    color:var(--brand);
+    border:1px solid color-mix(in srgb, var(--brand) 40%, transparent);
+  }
+  .name-block h3{margin:0 0 4px;font-size:19px;letter-spacing:-0.01em;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--muted);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:2px 6px;
+  }
+  .site-link{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--brand);
+    text-decoration:none;
+    border:1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+    padding:6px 10px;
+    border-radius:6px;
+    white-space:nowrap;
+    transition:background .15s ease;
+  }
+  .site-link:hover{background:color-mix(in srgb, var(--brand) 14%, transparent);}
+
+  .bestfor{
+    font-size:13.5px;
+    color:var(--text);
+    background:rgba(237,238,242,0.04);
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding:10px 12px;
+  }
+  .bestfor b{color:var(--amber); font-weight:600;}
+
+  .pc-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .pc h4{
+    margin:0 0 8px;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .pc.pros h4{color:var(--teal);}
+  .pc.cons h4{color:#E8735A;}
+  .pc ul{margin:0;padding-left:16px;font-size:13px;color:var(--muted);}
+  .pc ul li{margin-bottom:6px;}
+  .pc ul li::marker{color:inherit;}
+
+  .fit{
+    border-top:1px solid var(--line);
+    padding-top:14px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .fit b{color:var(--text);font-weight:600;}
+  .fit .industries{
+    margin-top:8px;
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .ind{
+    font-size:10.5px;
+    font-family:'IBM Plex Mono', monospace;
+    padding:3px 8px;
+    border-radius:999px;
+    background:color-mix(in srgb, var(--brand) 12%, transparent);
+    color:var(--brand);
+  }
+
+  footer{
+    padding:30px 6vw 60px;
+    color:var(--muted);
+    font-size:12.5px;
+    font-family:'IBM Plex Mono', monospace;
+    border-top:1px solid var(--line);
+  }
+
+  @media (max-width:560px){
+    .pc-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Field Guide · Web &amp; AI Frameworks, 2026</p>
+  <h1>Pick the stack that fits the <span>problem</span>, not the trend.</h1>
+  <p class="lede">Ten frontend and full-stack frameworks, scanned by category, language, and who actually ships faster with each one — startups, enterprise teams, content sites, and AI-agent backends alike.</p>
+</header>
+
+<div class="controls">
+  <div class="controls-row">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="text" placeholder="Search frameworks…" />
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Category</span>
+      <div class="seg" id="cat-seg"></div>
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Industry</span>
+      <div class="dropdown">
+        <button class="dropdown-btn mono" id="ind-btn">
+          <span>Any industry</span>
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-panel" id="ind-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="active-filters" id="active-filters"></div>
+</div>
+
+<main>
+  <p id="count" class="mono"></p>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  Brand color chips are indicative accents for quick scanning, not reproductions of any project's logo artwork. Verify current docs at each official site before committing to a stack.
+</footer>
+
+<script>
+const DATA = [
+  {
+    name:"Next.js", brand:"#7C8CF8", category:"Full-stack", lang:"TypeScript / JavaScript",
+    site:"https://nextjs.org", mark:"N.",
+    bestFor:"SaaS, e-commerce, and marketing sites that need strong SEO and edge deployment out of the box.",
+    pros:["React Server Components cut client bundle size","Zero-config TypeScript support","ISR blends static speed with fresh data","Deepest ecosystem: auth, CMS, UI kits target it first"],
+    cons:["App Router raises cognitive load for juniors","Steep curve mixing SSR/RSC/client state","Vercel lock-in risk if self-hosting","Frequent version churn creates upgrade friction"],
+    startup:"Best default for a funded startup shipping a customer-facing product fast, especially if deploying on Vercel.",
+    industries:["SaaS","E-commerce","Marketing"]
+  },
+  {
+    name:"React", brand:"#61DAFB", category:"Frontend (UI Library)", lang:"JavaScript / TypeScript",
+    site:"https://react.dev", mark:"R",
+    bestFor:"SPAs, component libraries, and dashboards where you want maximum tooling and hiring flexibility.",
+    pros:["Largest frontend ecosystem in the world","React Compiler auto-memoizes for you","Huge global talent pool","Works as SPA, SSR, static, or native (RN)"],
+    cons:["Not a full framework — you assemble routing/state yourself","Prop drilling still a pain without extra libraries","Poorly optimized bundles hurt mobile networks","Repeated paradigm shifts demand re-learning"],
+    startup:"Good choice when a startup wants a library, not an opinionated framework, and plans to build a custom internal dashboard or design system.",
+    industries:["Dashboards","Internal Tools","Design Systems"]
+  },
+  {
+    name:"Vue.js / Nuxt", brand:"#42B883", category:"Full-stack", lang:"JavaScript / TypeScript",
+    site:"https://nuxt.com", mark:"V.",
+    bestFor:"Startups and CMS-backed sites that want a gentle learning curve and an opinionated, batteries-included DX.",
+    pros:["Gentler learning curve than React","Single File Components keep code readable","Nuxt is opinionated and batteries-included","Best-in-class documentation"],
+    cons:["Smaller global ecosystem than React","Vue 2→3 migration left lingering fragmentation","Nuxt less proven at enterprise scale","Options vs Composition API split causes inconsistency"],
+    startup:"Strong pick for small teams or solo founders who want to move fast without assembling a stack from scratch.",
+    industries:["CMS / Content","Startups","SMB"]
+  },
+  {
+    name:"Angular", brand:"#DD0031", category:"Frontend", lang:"TypeScript",
+    site:"https://angular.dev", mark:"A.",
+    bestFor:"Enterprise applications, regulated industries, and large teams where consistency beats developer freedom.",
+    pros:["Complete framework: routing, forms, HTTP, DI included","Strict TypeScript reduces runtime errors","Strong built-in testing tooling","Long-term Google-backed support"],
+    cons:["Steepest learning curve of the major frameworks","Verbose boilerplate for small features","Historically larger bundle sizes","Harder to adopt newer patterns like islands"],
+    startup:"Rarely the startup default — fits better once a company is scaling into a large, multi-team engineering org.",
+    industries:["Finance","Government","Healthcare","Enterprise"]
+  },
+  {
+    name:"SvelteKit", brand:"#FF3E00", category:"Full-stack", lang:"JavaScript / TypeScript",
+    site:"https://svelte.dev", mark:"S.",
+    bestFor:"Performance-critical apps and content-driven JAMstack sites where shipping less JS matters most.",
+    pros:["No virtual DOM — compiled, efficient DOM updates","Tiny bundles boost Core Web Vitals","Syntax close to HTML/CSS lowers the barrier","Extremely fast HMR while developing"],
+    cons:["Smaller ecosystem, fewer UI libraries","Fewer senior Svelte developers to hire","Svelte 5 runes are a real paradigm shift","SSR edge cases harder to debug"],
+    startup:"Great for a small, performance-obsessed team building a lean product without a large hiring pipeline.",
+    industries:["JAMstack","Media","Performance-first Apps"]
+  },
+  {
+    name:"Astro", brand:"#FF5D01", category:"Frontend", lang:"JavaScript / TypeScript",
+    site:"https://astro.build", mark:"A*",
+    bestFor:"Content sites, blogs, docs, and marketing pages where near-zero JavaScript and top Lighthouse scores matter.",
+    pros:["Zero JS by default, near-perfect Lighthouse scores","Framework-agnostic: mix React/Vue/Svelte components","Type-safe Content Collections","Server Islands allow selective SSR"],
+    cons:["Not built for highly interactive dashboards","Client routing needs an extra integration","Smaller community than React","Plugin ecosystem still maturing"],
+    startup:"Ideal for a startup's marketing site or docs, usually paired with a separate app framework for the product itself.",
+    industries:["Content","Docs","Marketing","Publishing"]
+  },
+  {
+    name:"Remix", brand:"#3992FF", category:"Full-stack", lang:"TypeScript",
+    site:"https://remix.run", mark:"R*",
+    bestFor:"Performance-first apps and forms-heavy UIs, especially Shopify-adjacent commerce builds.",
+    pros:["Nested routing loads data in parallel, no waterfalls","Loader/action model is clean and testable","Strong error boundaries at every route","Progressive enhancement — works without JS"],
+    cons:["Smaller ecosystem than Next.js","Loader/action model is a real mental shift","Non-Vercel/Cloudflare deploys need more config","Fewer learning resources for juniors"],
+    startup:"Worth it for a startup building commerce or forms-heavy products on Shopify's stack.",
+    industries:["E-commerce","Forms / Workflow Apps"]
+  },
+  {
+    name:"Qwik", brand:"#AC7EF4", category:"Frontend", lang:"TypeScript",
+    site:"https://qwik.dev", mark:"Q",
+    bestFor:"Low-bandwidth markets and performance-critical apps needing instant time-to-interactive.",
+    pros:["Resumability gives O(1) hydration at any scale","No JS re-execution cost on page load","QwikCity adds full routing + server functions","Fine-grained lazy loading by default"],
+    cons:["Small ecosystem, few third-party components","Resumability demands new mental models","Limited production case studies so far","Some React patterns don't port cleanly"],
+    startup:"Consider it if your primary market has variable mobile networks and load time is a competitive edge.",
+    industries:["Mobile-first / IoT dashboards","Emerging Markets","E-commerce"]
+  },
+  {
+    name:"SolidJS", brand:"#2C4F7C", category:"Frontend", lang:"TypeScript",
+    site:"https://www.solidjs.com", mark:"S*",
+    bestFor:"High-performance dashboards and real-time UIs that need fine-grained, no-virtual-DOM reactivity.",
+    pros:["Fine-grained reactivity, fastest-in-class updates","Familiar JSX eases the move from React","~7KB runtime, extremely small bundles","Elegant, predictable reactive primitives"],
+    cons:["Smaller ecosystem than React","Signal-based rules confuse React veterans","Hiring Solid developers is still hard","SolidStart meta-framework still maturing"],
+    startup:"Fits a startup building a real-time, data-dense product — trading dashboards, monitoring tools, live IoT telemetry.",
+    industries:["Real-time / IoT","Fintech Dashboards","Monitoring Tools"]
+  },
+  {
+    name:"Wasp", brand:"#FFCA28", category:"Full-stack", lang:"TypeScript (config DSL)",
+    site:"https://wasp.sh", mark:"W",
+    bestFor:"Solo founders and small teams who want a React + Node + Prisma SaaS scaffolded from a single config file.",
+    pros:["Declarative config generates auth, routing, and CRUD","Built on familiar React/Node/Prisma under the hood","Very fast path from idea to working MVP","Opinionated defaults remove setup decisions"],
+    cons:["Small community relative to mainstream frameworks","DSL adds an abstraction layer to learn","Fewer integrations and production case studies","Ejecting from conventions can be awkward later"],
+    startup:"Best suited to pre-seed founders validating a SaaS idea who want to skip weeks of boilerplate setup.",
+    industries:["Early-stage SaaS","MVP / Prototyping"]
+  }
+];
+
+const grid = document.getElementById('grid');
+const countEl = document.getElementById('count');
+const catSeg = document.getElementById('cat-seg');
+const indBtn = document.getElementById('ind-btn');
+const indPanel = document.getElementById('ind-panel');
+const activeFiltersEl = document.getElementById('active-filters');
+const searchInput = document.getElementById('search');
+
+const CATS = ["All", ...new Set(DATA.map(d=>d.category))];
+const allIndustries = [...new Set(DATA.flatMap(d=>d.industries))].sort();
+
+let activeCat = "All";
+let activeInds = new Set();
+let query = "";
+
+function buildCategoryTabs(){
+  catSeg.innerHTML = "";
+  CATS.forEach(cat=>{
+    const b = document.createElement('button');
+    b.className = (cat===activeCat ? 'active':'');
+    b.textContent = cat;
+    b.onclick = ()=>{ activeCat = cat; render(); };
+    catSeg.appendChild(b);
+  });
+}
+
+function buildIndustryPanel(){
+  indPanel.innerHTML = "";
+  allIndustries.forEach(ind=>{
+    const label = document.createElement('label');
+    label.className = 'dropdown-item';
+    label.innerHTML = `<input type="checkbox" ${activeInds.has(ind)?'checked':''}/> ${ind}`;
+    label.querySelector('input').onchange = (e)=>{
+      if(e.target.checked) activeInds.add(ind); else activeInds.delete(ind);
+      render();
+    };
+    indPanel.appendChild(label);
+  });
+  const foot = document.createElement('div');
+  foot.className = 'dropdown-foot';
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'mono';
+  clearBtn.textContent = 'Clear industries';
+  clearBtn.onclick = ()=>{ activeInds.clear(); render(); };
+  foot.appendChild(clearBtn);
+  indPanel.appendChild(foot);
+
+  const n = activeInds.size;
+  indBtn.classList.toggle('has-selection', n>0);
+  indBtn.querySelector('span').textContent = n===0 ? 'Any industry' : `${n} industry${n>1?'ies'.slice(0):'y'} selected`.replace('yies','y');
+  indBtn.querySelector('span').textContent = n===0 ? 'Any industry' : (n===1 ? `${[...activeInds][0]}` : `${n} industries selected`);
+}
+
+indBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  indPanel.classList.toggle('open');
+  indBtn.classList.toggle('open');
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.dropdown')){
+    indPanel.classList.remove('open');
+    indBtn.classList.remove('open');
+  }
+});
+
+searchInput.addEventListener('input', (e)=>{ query = e.target.value.trim().toLowerCase(); render(); });
+
+function buildActiveFilters(){
+  activeFiltersEl.innerHTML = "";
+  const pills = [];
+
+  if(activeCat !== "All"){
+    pills.push({label:`Category: ${activeCat}`, onRemove:()=>{ activeCat="All"; render(); }});
+  }
+  activeInds.forEach(ind=>{
+    pills.push({label:ind, onRemove:()=>{ activeInds.delete(ind); render(); }});
+  });
+  if(query){
+    pills.push({label:`"${query}"`, onRemove:()=>{ query=""; searchInput.value=""; render(); }});
+  }
+
+  pills.forEach(p=>{
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.innerHTML = `${p.label} <button aria-label="Remove filter"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+    pill.querySelector('button').onclick = p.onRemove;
+    activeFiltersEl.appendChild(pill);
+  });
+
+  if(pills.length){
+    const clearAll = document.createElement('button');
+    clearAll.className = 'clear-all';
+    clearAll.textContent = 'Clear all';
+    clearAll.onclick = ()=>{ activeCat="All"; activeInds.clear(); query=""; searchInput.value=""; render(); };
+    activeFiltersEl.appendChild(clearAll);
+  }
+}
+
+function card(d){
+  return `
+  <div class="card" style="--brand:${d.brand}">
+    <div class="card-top">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div class="mark">${d.mark}</div>
+        <div class="name-block">
+          <h3>${d.name}</h3>
+          <div class="tags">
+            <span class="tag">${d.category}</span>
+            <span class="tag">${d.lang}</span>
+          </div>
+        </div>
+      </div>
+      <a class="site-link mono" href="${d.site}" target="_blank" rel="noopener">Visit site ↗</a>
+    </div>
+
+    <div class="bestfor"><b>Best for —</b> ${d.bestFor}</div>
+
+    <div class="pc-grid">
+      <div class="pc pros">
+        <h4>Pros</h4>
+        <ul>${d.pros.map(p=>`<li>${p}</li>`).join('')}</ul>
+      </div>
+      <div class="pc cons">
+        <h4>Cons</h4>
+        <ul>${d.cons.map(c=>`<li>${c}</li>`).join('')}</ul>
+      </div>
+    </div>
+
+    <div class="fit">
+      <b>Startup fit —</b> ${d.startup}
+      <div class="industries">
+        ${d.industries.map(i=>`<span class="ind">${i}</span>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  buildCategoryTabs();
+  buildIndustryPanel();
+  buildActiveFilters();
+
+  const filtered = DATA.filter(d=>{
+    const catOk = activeCat==="All" || d.category===activeCat;
+    const indOk = activeInds.size===0 || d.industries.some(i=>activeInds.has(i));
+    const searchOk = !query || d.name.toLowerCase().includes(query) || d.lang.toLowerCase().includes(query) || d.bestFor.toLowerCase().includes(query);
+    return catOk && indOk && searchOk;
+  });
+
+  countEl.textContent = `${filtered.length} of ${DATA.length} frameworks`;
+  grid.innerHTML = filtered.length
+    ? filtered.map(card).join('')
+    : `<p class="mono" style="color:var(--muted);grid-column:1/-1;">No frameworks match these filters.</p>`;
+}
+
+render();
+</script>
+
+</body>
+</html>
